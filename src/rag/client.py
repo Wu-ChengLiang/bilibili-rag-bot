@@ -1,65 +1,121 @@
-"""RAG Client with ChromaDB and Text2Vec"""
+"""RAG Client with dependency injection and flexible architecture"""
 
-import os
-import uuid
-from typing import List, Dict, Any, Optional
-import chromadb
-from chromadb.config import Settings
-from text2vec import SentenceModel
+from typing import List, Dict, Any, Optional, Union
+from .core.embedding import BaseEmbedding
+from .core.vector_store import BaseVectorStore
+from .embeddings.text2vec import Text2VecEmbedding
+from .stores.factory import create_vector_store
+from .config import RAGConfig, EmbeddingConfig, VectorStoreConfig
 from .types import SearchResult
+from .reranker import Reranker
 
 
 class RAGClient:
-    """RAG Client with persistent ChromaDB storage and Text2Vec embeddings"""
+    """RAG Client with flexible embedding and vector store backends
+
+    This client uses dependency injection to allow flexible configuration
+    of embedding models and vector stores. It follows SOLID principles
+    and supports easy testing and extension.
+
+    Examples:
+        >>> # Simple usage with defaults (Chinese-optimized)
+        >>> client = RAGClient()
+
+        >>> # Custom configuration
+        >>> config = RAGConfig.default_chinese()
+        >>> client = RAGClient.from_config(config)
+
+        >>> # Dependency injection for testing
+        >>> embedding = Mock(spec=BaseEmbedding)
+        >>> store = Mock(spec=BaseVectorStore)
+        >>> client = RAGClient(embedding=embedding, vector_store=store)
+    """
 
     def __init__(
         self,
-        persist_directory: str = "./chroma_db",
-        collection_name: str = "documents",
-        model_name: str = "shibing624/text2vec-base-chinese"
+        embedding: Optional[BaseEmbedding] = None,
+        vector_store: Optional[BaseVectorStore] = None,
+        config: Optional[RAGConfig] = None,
+        enable_reranking: bool = False,
     ):
-        """Initialize RAG client
+        """Initialize RAG client with dependency injection
 
         Args:
-            persist_directory: Directory for persistent storage
-            collection_name: Name of the collection
-            model_name: Text2Vec model name for Chinese embeddings
+            embedding: Embedding model instance (if None, uses config or default)
+            vector_store: Vector store instance (if None, uses config or default)
+            config: RAG configuration (if None, uses default Chinese config)
+            enable_reranking: Whether to enable reranking
         """
-        self.persist_directory = persist_directory
-        self.collection_name = collection_name
+        # Use config if provided, otherwise use default
+        if config is None:
+            config = RAGConfig.default_chinese()
 
-        # Create persist directory if it doesn't exist
-        os.makedirs(persist_directory, exist_ok=True)
+        self.config = config
 
-        # Initialize Text2Vec embedding model
-        self.embedding_model = SentenceModel(model_name)
+        # Initialize embedding model (dependency injection or factory)
+        if embedding is not None:
+            self.embedding = embedding
+        else:
+            self.embedding = self._create_embedding_from_config(config.embedding)
 
-        # Initialize ChromaDB client with persistence
-        self.client = chromadb.PersistentClient(
-            path=persist_directory,
-            settings=Settings(
-                anonymized_telemetry=False,
-                allow_reset=True
-            )
-        )
+        # Initialize vector store (dependency injection or factory)
+        if vector_store is not None:
+            self.vector_store = vector_store
+        else:
+            self.vector_store = create_vector_store(config.vector_store)
 
-        # Get or create collection
-        self.collection = self.client.get_or_create_collection(
-            name=collection_name,
-            metadata={"hnsw:space": "cosine"}  # Use cosine similarity
-        )
+        # Initialize reranker if enabled
+        # Use explicit parameter if provided, otherwise use config
+        if enable_reranking:
+            self.enable_reranking = True
+        else:
+            self.enable_reranking = config.enable_reranking
 
-    def _generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding for text using Text2Vec
+        if self.enable_reranking:
+            self.reranker = Reranker()
+        else:
+            self.reranker = None
+
+    @classmethod
+    def from_config(cls, config: RAGConfig) -> "RAGClient":
+        """Create RAG client from configuration
 
         Args:
-            text: Input text
+            config: RAG configuration
 
         Returns:
-            Embedding vector
+            RAGClient instance
         """
-        embedding = self.embedding_model.encode(text)
-        return embedding.tolist()
+        return cls(config=config)
+
+    @classmethod
+    def default_chinese(cls) -> "RAGClient":
+        """Create RAG client with Chinese-optimized defaults
+
+        Returns:
+            RAGClient configured for Chinese text processing
+        """
+        return cls(config=RAGConfig.default_chinese())
+
+    def _create_embedding_from_config(self, config: EmbeddingConfig) -> BaseEmbedding:
+        """Create embedding model from configuration
+
+        Args:
+            config: Embedding configuration
+
+        Returns:
+            BaseEmbedding instance
+
+        Raises:
+            ValueError: If provider is unsupported
+        """
+        if config.provider == "text2vec":
+            return Text2VecEmbedding(model_name=config.model_name)
+        # Future: Add support for OpenAI, Cohere, etc.
+        # elif config.provider == "openai":
+        #     return OpenAIEmbedding(api_key=config.api_key, model=config.model_name)
+        else:
+            raise ValueError(f"Unsupported embedding provider: {config.provider}")
 
     def add_document(
         self,
@@ -83,19 +139,21 @@ class RAGClient:
         if not content or not content.strip():
             raise ValueError("Document content cannot be empty")
 
-        if doc_id is None:
-            doc_id = str(uuid.uuid4())
+        # Generate embedding using injected embedding model
+        embedding = self.embedding.encode(content)
+        if not isinstance(embedding[0], list):
+            # Single embedding, wrap in list
+            embedding = [embedding]
 
-        embedding = self._generate_embedding(content)
-
-        self.collection.add(
-            ids=[doc_id],
-            embeddings=[embedding],
+        # Add to vector store
+        ids = self.vector_store.add_documents(
             documents=[content],
-            metadatas=[metadata] if metadata else None
+            embeddings=embedding,
+            metadatas=[metadata] if metadata else None,
+            ids=[doc_id] if doc_id else None
         )
 
-        return doc_id
+        return ids[0]
 
     def add_documents(
         self,
@@ -113,32 +171,38 @@ class RAGClient:
         Returns:
             List of document IDs
         """
-        if doc_ids is None:
-            doc_ids = [str(uuid.uuid4()) for _ in documents]
+        if not documents:
+            return []
 
-        embeddings = [self._generate_embedding(doc) for doc in documents]
+        # Generate embeddings using injected embedding model
+        embeddings = self.embedding.encode(documents)
 
-        self.collection.add(
-            ids=doc_ids,
-            embeddings=embeddings,
+        # Ensure embeddings is a list of lists
+        if embeddings and not isinstance(embeddings[0], list):
+            embeddings = [embeddings]
+
+        # Add to vector store
+        return self.vector_store.add_documents(
             documents=documents,
-            metadatas=metadatas
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=doc_ids
         )
-
-        return doc_ids
 
     def search(
         self,
         query: str,
-        limit: int = 5,
-        score_threshold: Optional[float] = None
+        limit: Optional[int] = None,
+        score_threshold: Optional[float] = None,
+        filter_metadata: Optional[Dict[str, Any]] = None,
     ) -> List[SearchResult]:
         """Search for similar documents
 
         Args:
             query: Search query
-            limit: Maximum number of results
+            limit: Maximum number of results (uses config default if None)
             score_threshold: Optional minimum similarity score
+            filter_metadata: Optional metadata filter
 
         Returns:
             List of search results
@@ -149,32 +213,69 @@ class RAGClient:
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")
 
-        query_embedding = self._generate_embedding(query)
+        # Use config defaults if not specified
+        if limit is None:
+            limit = self.config.default_search_limit
+        if score_threshold is None:
+            score_threshold = self.config.default_score_threshold
 
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=limit
+        # Generate query embedding
+        query_embedding = self.embedding.encode(query)
+
+        # Search vector store
+        results = self.vector_store.search(
+            query_embedding=query_embedding,
+            limit=limit if not self.enable_reranking else limit * 2,  # Get more for reranking
+            score_threshold=score_threshold,
+            filter_metadata=filter_metadata,
         )
 
-        # Format results
-        search_results: List[SearchResult] = []
+        # Apply reranking if enabled
+        if self.enable_reranking and self.reranker and results:
+            results = self.reranker.rerank(
+                query=query,
+                results=results,
+                top_k=limit
+            )
 
-        if results["ids"] and len(results["ids"]) > 0:
-            for i in range(len(results["ids"][0])):
-                # Calculate similarity score (ChromaDB returns distance, convert to similarity)
-                distance = results["distances"][0][i] if results["distances"] else 0
-                score = 1 - distance  # Convert distance to similarity score
+        return results[:limit]
 
-                # Apply threshold if specified
-                if score_threshold is not None and score < score_threshold:
-                    continue
+    def delete_documents(self, ids: List[str]) -> None:
+        """Delete documents by IDs
 
-                result: SearchResult = {
-                    "doc_id": results["ids"][0][i],
-                    "content": results["documents"][0][i],
-                    "metadata": results["metadatas"][0][i] if results["metadatas"] else None,
-                    "score": score
-                }
-                search_results.append(result)
+        Args:
+            ids: List of document IDs to delete
+        """
+        self.vector_store.delete_documents(ids)
 
-        return search_results
+    def reset(self) -> None:
+        """Clear all documents from the store"""
+        self.vector_store.reset()
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get statistics about the RAG system
+
+        Returns:
+            Dictionary with statistics
+        """
+        collection_info = self.vector_store.get_collection_info()
+
+        return {
+            "embedding_model": self.embedding.model_name,
+            "embedding_dimension": self.embedding.dimension,
+            "vector_store": self.vector_store.__class__.__name__,
+            "collection_name": self.vector_store.collection_name,
+            "document_count": self.vector_store.document_count,
+            "reranking_enabled": self.enable_reranking,
+            **collection_info,
+        }
+
+    @property
+    def collection_name(self) -> str:
+        """Get collection name"""
+        return self.vector_store.collection_name
+
+    @property
+    def document_count(self) -> int:
+        """Get document count"""
+        return self.vector_store.document_count
