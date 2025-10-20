@@ -30,7 +30,7 @@ for strategy in strategies:
     print(f"Min/Max: {min(sizes)}/{max(sizes)} chars")
 
 # Check if needle exists
-needle = "在2025年，阿良曾遇见了一个叫雅薇的女孩，当时是在杭州钱塘江漫步的绿道上，似乎一切都有着阳光。"
+needle = "后来，在某个城市漫步的我，进入了一个初创公司，名叫梦醒，开始了旅程"
 chunks = loader.load_file("data/life4.txt", strategy="smart", chunk_size=300)
 
 found = False
