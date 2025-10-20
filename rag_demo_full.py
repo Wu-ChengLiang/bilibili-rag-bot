@@ -16,14 +16,28 @@ def main():
     KIMI_API_KEY = os.getenv("MOONSHOT_API_KEY", "sk-QMVGFIxphgo70al8We9W76woZIhz2dER0VyfZb0DSRwHPrlO")
 
     # 步骤 1: 加载文档并分块
-    print("\n[步骤 1] 加载文档并分块...")
+    print("\n[步骤 1] 加载 data 目录下所有文档并分块...")
     loader = DocumentLoader()
-    chunks = loader.load_file(
+
+    # 加载所有文档
+    data_files = [
+        "data/fire2.txt",
         "data/life3.txt",
-        strategy="smart",
-        chunk_size=300
-    )
-    print(f"   加载了 {len(chunks)} 个文档块")
+        "data/life4.txt"
+    ]
+
+    all_chunks = []
+    for file_path in data_files:
+        file_chunks = loader.load_file(
+            file_path,
+            strategy="smart",
+            chunk_size=300
+        )
+        all_chunks.extend(file_chunks)
+        print(f"   - {file_path}: {len(file_chunks)} 个块")
+
+    chunks = all_chunks
+    print(f"   总计加载了 {len(chunks)} 个文档块")
     print(f"   示例块: {chunks[0][:100]}..." if chunks else "   无数据")
 
     # 步骤 2: 初始化 RAG 客户端
@@ -39,7 +53,7 @@ def main():
     print(f"   已添加 {len(doc_ids)} 个文档块")
 
     # 步骤 4: 用户提问
-    query = "福贵是谁？他和老牛有什么故事？"
+    query = "我加入的初创公司叫什么名字"
     print(f"\n[步骤 4] 用户提问")
     print(f"   问题: {query}")
 
@@ -81,41 +95,9 @@ def main():
         print(f"\n   ⚠️  LLM 调用失败: {e}")
         print("   但检索和 Rerank 功能正常工作！")
 
-    # 演示多轮对话
-    print("\n" + "=" * 80)
-    print("多轮对话演示")
-    print("=" * 80)
-
-    questions = [
-        "老牛叫什么名字？",
-        "福贵的家里有多少亩地？",
-        "文中提到的城市有哪些？"
-    ]
-
-    for q in questions:
-        print(f"\n问: {q}")
-
-        # 检索
-        results = rag_client.search(q, limit=5)
-
-        # Rerank
-        reranked = reranker.rerank(q, results, top_k=2)
-
-        print(f"检索到 {len(results)} 个文档，Rerank 后保留 {len(reranked)} 个")
-
-        # 显示最相关的文档
-        if reranked:
-            print(f"最相关文档: {reranked[0]['content'][:100]}...")
-
     print("\n" + "=" * 80)
     print("演示完成！")
     print("=" * 80)
-
-    print("\n功能总结:")
-    print("✅ 文档分块 (DocumentLoader)")
-    print("✅ 向量检索 (ChromaDB + Text2Vec)")
-    print("✅ Rerank 重排序 (基于关键词和长度)")
-    print("✅ LLM 生成 (Kimi API)")
 
 
 if __name__ == "__main__":
