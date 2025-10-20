@@ -1,17 +1,27 @@
 # RAG Needle In a Haystack Test
 
-A Retrieval-Augmented Generation (RAG) system with Needle In a Haystack testing capabilities.
-
-## Overview
-
-This project implements a RAG system designed to test and evaluate retrieval accuracy using the "Needle In a Haystack" methodology. The test validates whether the system can accurately retrieve specific information (the "needle") from a large corpus of documents (the "haystack").
+MVP implementation of a RAG system with Chinese support and Needle In a Haystack testing.
 
 ## Features
 
-- Document storage and indexing
-- Vector-based semantic search
-- Needle In a Haystack testing framework
-- Performance metrics and evaluation
+- **Vector Database**: ChromaDB with persistent storage
+- **Embedding**: Text2Vec for Chinese text
+- **Testing**: Needle In a Haystack evaluation framework
+- **Development**: TDD approach
+
+## Architecture
+
+```
+src/rag/
+├── client.py          # ChromaDB client with Text2Vec
+├── types.py           # Type definitions
+└── needle_test.py     # Needle In a Haystack test framework
+
+tests/
+├── test_client.py     # Client tests
+├── test_search.py     # Search functionality tests
+└── test_needle.py     # Needle In a Haystack tests
+```
 
 ## Installation
 
@@ -21,24 +31,30 @@ pip install -r requirements.txt
 
 ## Usage
 
-Coming soon...
+```python
+from src.rag.client import RAGClient
 
-## Project Structure
+# Initialize client
+client = RAGClient(persist_directory="./chroma_db")
 
-```
-rag/
-├── README.md
-├── requirements.txt
-├── src/
-│   ├── __init__.py
-│   ├── rag_system.py
-│   └── needle_test.py
-├── tests/
-│   └── __init__.py
-└── data/
-    └── .gitkeep
+# Add documents
+client.add_documents(["文档1", "文档2"])
+
+# Search
+results = client.search("查询文本", limit=5)
 ```
 
-## License
+## Testing
 
-MIT License
+```bash
+pytest tests/
+```
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Vector DB | ChromaDB |
+| Embedding | Text2Vec |
+| Persistence | File system |
+| Testing | pytest |
