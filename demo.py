@@ -2,24 +2,25 @@
 
 from src.rag.client import RAGClient
 from src.rag.needle_test import NeedleTest
+from src.rag.document_loader import DocumentLoader
 
 
-def load_life_txt():
-    """Load and split life.txt into paragraphs"""
-    with open("data/life3.txt", "r", encoding="utf-8") as f:
-        content = f.read()
+def load_life_txt(strategy="smart", chunk_size=300):
+    """Load and split life.txt into paragraphs
 
-    # Split by line numbers (format: "1→text")
-    lines = content.strip().split("\n")
-    paragraphs = []
+    Args:
+        strategy: Chunking strategy ("smart", "sentences", "fixed_size")
+        chunk_size: Target size for each chunk in characters
 
-    for line in lines:
-        if "→" in line:
-            # Extract text after arrow
-            text = line.split("→", 1)[1].strip()
-            if text:  # Only add non-empty paragraphs
-                paragraphs.append(text)
-
+    Returns:
+        List of text chunks
+    """
+    loader = DocumentLoader()
+    paragraphs = loader.load_file(
+        "data/life4.txt",  # Needle is in life4.txt
+        strategy=strategy,
+        chunk_size=chunk_size
+    )
     return paragraphs
 
 
@@ -52,15 +53,39 @@ def main():
     # Create needle tester
     tester = NeedleTest(client)
 
-    # Run test
+    # Run test with real haystack documents
     print("\n[5] Running Needle In a Haystack test...")
     print("    Query: '阿良在2025年遇见了谁'")
 
-    result = tester.run_test(
-        needle=needle,
-        haystack_size=len(haystack),
-        query="阿良在2025年遇见了谁"
-    )
+    # Insert needle into haystack
+    import random
+    position = random.randint(0, len(haystack))
+    all_documents = haystack.copy()
+    all_documents.insert(position, needle)
+
+    # Add to RAG system
+    client.add_documents(all_documents)
+
+    # Search
+    search_results = client.search("阿良在2025年遇见了谁", limit=5)
+
+    # Analyze results
+    needle_found = False
+    needle_rank = None
+    for i, res in enumerate(search_results):
+        if needle in res["content"]:
+            needle_found = True
+            needle_rank = i + 1
+            break
+
+    result = {
+        "haystack_size": len(haystack),
+        "needle_position": position,
+        "needle_found": needle_found,
+        "needle_rank": needle_rank,
+        "success": needle_found and needle_rank == 1,
+        "retrieved_documents": [r["content"] for r in search_results]
+    }
 
     # Print results
     print("\n" + "=" * 80)
@@ -80,36 +105,38 @@ def main():
         print(f"{i}. {doc[:80]}... {is_needle}")
 
     # Run multiple tests with different haystack sizes
-    print("\n" + "=" * 80)
-    print("RUNNING MULTIPLE TESTS")
-    print("=" * 80)
-
-    sizes = [50, 100, 150]
-    print(f"Testing with haystack sizes: {sizes}")
-    print("Trials per size: 3\n")
-
-    results = tester.run_multiple_tests(
-        needle=needle,
-        haystack_sizes=sizes,
-        trials_per_size=3
-    )
-
-    # Calculate statistics
-    total_tests = len(results)
-    found_count = sum(1 for r in results if r['needle_found'])
-    success_count = sum(1 for r in results if r['success'])
-
-    print(f"Total tests: {total_tests}")
-    print(f"Needle found: {found_count}/{total_tests} ({found_count/total_tests*100:.1f}%)")
-    print(f"Ranked #1: {success_count}/{total_tests} ({success_count/total_tests*100:.1f}%)")
-
-    # Breakdown by size
-    print("\nBreakdown by haystack size:")
-    for size in sizes:
-        size_results = [r for r in results if r['haystack_size'] == size]
-        size_found = sum(1 for r in size_results if r['needle_found'])
-        size_success = sum(1 for r in size_results if r['success'])
-        print(f"  Size {size}: Found {size_found}/3, Rank#1 {size_success}/3")
+    # Note: Commented out to avoid using generated haystack
+    # TODO: Implement run_multiple_tests with real documents from life4.txt
+    # print("\n" + "=" * 80)
+    # print("RUNNING MULTIPLE TESTS")
+    # print("=" * 80)
+    #
+    # sizes = [50, 100, 150]
+    # print(f"Testing with haystack sizes: {sizes}")
+    # print("Trials per size: 3\n")
+    #
+    # results = tester.run_multiple_tests(
+    #     needle=needle,
+    #     haystack_sizes=sizes,
+    #     trials_per_size=3
+    # )
+    #
+    # # Calculate statistics
+    # total_tests = len(results)
+    # found_count = sum(1 for r in results if r['needle_found'])
+    # success_count = sum(1 for r in results if r['success'])
+    #
+    # print(f"Total tests: {total_tests}")
+    # print(f"Needle found: {found_count}/{total_tests} ({found_count/total_tests*100:.1f}%)")
+    # print(f"Ranked #1: {success_count}/{total_tests} ({success_count/total_tests*100:.1f}%)")
+    #
+    # # Breakdown by size
+    # print("\nBreakdown by haystack size:")
+    # for size in sizes:
+    #     size_results = [r for r in results if r['haystack_size'] == size]
+    #     size_found = sum(1 for r in size_results if r['needle_found'])
+    #     size_success = sum(1 for r in size_results if r['success'])
+    #     print(f"  Size {size}: Found {size_found}/3, Rank#1 {size_success}/3")
 
     print("\n" + "=" * 80)
     print("Demo completed!")
