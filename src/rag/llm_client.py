@@ -55,11 +55,7 @@ class LLMClient:
         if system_prompt is None:
             system_prompt = """你是一个智能问答助手。你会基于提供的文档片段来回答用户的问题。
 
-规则：
-1. 只使用提供的文档片段中的信息来回答
-2. 如果文档中没有相关信息，明确告诉用户
-3. 回答要准确、简洁、有帮助
-4. 可以引用具体的文档片段"""
+请仔细阅读文档片段，从中找到最相关的信息来回答问题。"""
 
         # Build user message with context
         user_message = f"""参考文档：

@@ -40,6 +40,25 @@ def main():
     print(f"   总计加载了 {len(chunks)} 个文档块")
     print(f"   示例块: {chunks[0][:100]}..." if chunks else "   无数据")
 
+    # 添加干扰句（故意误导的信息）
+    print("\n[步骤 1.5] 添加干扰句增加难度...")
+    distractor_sentences = [
+        "我在某个城市加入了一家初创公司，名字叫做梦想，专注于人工智能技术的研发。",
+        "后来我进入了一个科技企业，公司的名字好像叫梦境科技，是做云计算服务的。",
+        "那时候我加入的那家初创企业名字我记不太清了，可能是叫做梦幻还是什么的。",
+        "在城市漫步时，我看到一家公司叫梦途，是一家旅游类的初创公司，我差点加入。",
+        "我曾经考虑过加入一家叫梦启的初创公司，但最后没有去成。"
+    ]
+
+    # 随机插入干扰句到不同位置
+    import random
+    for distractor in distractor_sentences:
+        insert_pos = random.randint(0, len(chunks))
+        chunks.insert(insert_pos, distractor)
+
+    print(f"   已添加 {len(distractor_sentences)} 个干扰句")
+    print(f"   新的总文档数: {len(chunks)} 个")
+
     # 步骤 2: 初始化 RAG 客户端
     print("\n[步骤 2] 初始化 RAG 客户端...")
     rag_client = RAGClient(
@@ -53,7 +72,7 @@ def main():
     print(f"   已添加 {len(doc_ids)} 个文档块")
 
     # 步骤 4: 用户提问
-    query = "我加入的初创公司叫什么名字"
+    query = "我在漫步的时候加入了哪家公司？"
     print(f"\n[步骤 4] 用户提问")
     print(f"   问题: {query}")
 
