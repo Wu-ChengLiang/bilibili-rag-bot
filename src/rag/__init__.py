@@ -30,13 +30,12 @@ from .config import RAGConfig, EmbeddingConfig, VectorStoreConfig
 from .client import RAGClient
 
 # Utilities
-from .document_loader import DocumentLoader
 from .reranker import Reranker
 from .needle_test import NeedleTest
 from .llm_client import LLMClient
 
 # Types
-from .types import Document, SearchResult
+from .types import SearchResult
 
 __version__ = "2.0.0"
 
@@ -53,11 +52,9 @@ __all__ = [
     "Text2VecEmbedding",
     "ChromaDBStore",
     # Utilities
-    "DocumentLoader",
     "Reranker",
     "NeedleTest",
     "LLMClient",
     # Types
-    "Document",
     "SearchResult",
 ]
