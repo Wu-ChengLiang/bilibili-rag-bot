@@ -3,7 +3,7 @@
 import requests
 import json
 import logging
-from src.rag.data.config import FeishuConfig
+from src.data.config import FeishuConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

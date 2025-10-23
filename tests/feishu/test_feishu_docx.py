@@ -1,8 +1,14 @@
 """Test Feishu docx loader"""
 
+import sys
+from pathlib import Path
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 import logging
-from src.rag.data.config import FeishuConfig
-from src.rag.data.loaders import FeishuDocxLoader
+from src.data.config import FeishuConfig
+from src.data.loaders import FeishuDocxLoader
 
 logging.basicConfig(
     level=logging.INFO,
