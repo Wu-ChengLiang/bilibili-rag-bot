@@ -1,15 +1,15 @@
-# RAG System with Needle In Haystack Testing
+# RAG System with BiliGo Integration
 
-一个企业级的 RAG（Retrieval-Augmented Generation）系统，具备完整的架构设计、测试框架和中文优化。
+一个企业级的 RAG（Retrieval-Augmented Generation）系统，集成了 B站私信 AI 自动回复功能，具备完整的架构设计、中文优化和多用户对话管理。
 
 ## ✨ 特性
 
 - 🏗️ **企业级架构** - 依赖注入、SOLID 原则、易于扩展
-- 🧪 **双重测试框架** - RAG 检索测试 + LLM 长上下文测试
-- 🇨🇳 **中文优化** - 智能文本分块、中文 embedding、重排序
-- 🔌 **可扩展** - 支持多种 embedding 和向量数据库
-- ✅ **完整测试** - 16 个单元测试全部通过
+- 🇨🇳 **中文优化** - 智能文本分块、多种中文 embedding、重排序
+- 🔌 **可扩展** - 支持多种 embedding (text2vec, GTE) 和向量数据库
 - 🤖 **BiliGo 集成** - B站私信 AI 自动回复系统（基于 RAG）
+- 💬 **对话管理** - 多用户对话历史管理和持久化
+- 🎯 **多 LLM 支持** - Kimi/Moonshot 和智谱 GLM API
 
 ## 🚀 快速开始
 
@@ -78,58 +78,36 @@ config.default_search_limit = 10
 client = RAGClient.from_config(config)
 ```
 
-## 📊 测试框架
+## 📊 核心功能
 
-### 1. RAG 检索测试（完整 Pipeline）
+### RAG 搜索与检索
 
-测试向量检索的准确性：
+完整的文档加载、向量化和智能搜索：
 
 ```python
-from src.rag import RAGClient, NeedleTest
+from src.rag import RAGClient
 
 client = RAGClient()
-tester = NeedleTest(client)
 
-# 运行测试
-result = tester.run_test(
-    needle="重要信息：宝藏在山顶",
-    haystack_size=100,
-    query="宝藏在哪里？"
-)
+# 自动从 ./data 目录加载文档
+# 支持 .md, .txt 等文本格式
 
-print(f"成功: {result['success']}")
-print(f"排名: {result['needle_rank']}")
+# 搜索
+results = client.search("查询内容", limit=5)
+
+for result in results:
+    print(f"相关度: {result['score']:.2f}")
+    print(f"内容: {result['content']}")
 ```
 
-**测试内容：**
-- ✅ Embedding 模型的语义理解
-- ✅ Vector Search 的准确性
-- ✅ Reranker 的效果
+### 对话管理
 
-### 2. LLM 长上下文测试（类似 Arize）
-
-测试 LLM 从长文档中提取信息的能力：
+支持多用户的对话历史管理：
 
 ```python
-from src.rag import LongContextTest
-
-tester = LongContextTest(api_key="your-kimi-key")
-
-# 运行测试
-results = tester.run_comprehensive_test(
-    context_lengths=[1000, 5000, 10000],
-    needle_positions=["beginning", "middle", "end"],
-    trials_per_config=3
-)
-
-# 可视化
-tester.visualize_results(results)
+# 对话历史自动保存到 ./history/{platform}/{user_id}.json
+# 用户重新交互时，自动加载之前的对话历史
 ```
-
-**测试内容：**
-- ✅ LLM 长上下文理解能力
-- ✅ 不同位置的信息检索
-- ✅ 上下文长度影响
 
 ## 🏗️ 架构设计
 
@@ -166,57 +144,46 @@ client = RAGClient(embedding=mock_embedding, vector_store=mock_store)
 
 | 组件 | 说明 | 特色 |
 |------|------|------|
-| **DocumentLoader** | 文档加载与分块 | 3种策略：sentences, fixed_size, smart |
-| **Reranker** | 重排序模块 | 多因子评分（向量+关键词+长度） |
-| **NeedleTest** | RAG检索测试 | Needle In Haystack 方法论 |
-| **LongContextTest** | LLM长上下文测试 | 类似 Arize Phoenix |
-| **LLMClient** | LLM 集成 | 支持 Kimi/Moonshot API |
+| **RAGClient** | 主 RAG 客户端 | 文档管理、搜索、配置管理 |
+| **Reranker** | 智能重排序 | 多因子评分（向量+关键词+长度） |
+| **Embeddings** | 嵌入模型 | Text2Vec、GTE (中文优化) |
+| **LLMClient** | LLM 集成 | 支持 Kimi、智谱 GLM |
+| **ConversationManager** | 对话管理 | 多用户历史管理和持久化 |
 
-## 📈 测试结果
+## 📈 运行示例
 
-### 单元测试
+### 启动 RAG 服务并测试
 
 ```bash
-pytest tests/ -v
+# 启动服务
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 &
+
+# 测试 API
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "test",
+    "user_id": "user_001",
+    "user_name": "测试用户",
+    "message": "你好"
+  }'
 ```
 
+### B站私信集成示例
+
+```bash
+# 启动 BiliGo
+cd BiliGo && python3 app.py &
+
+# 在 Web 界面配置 B站凭证
+# http://localhost:4999
+# 启动私信监控后，系统会自动回复消息
 ```
-✅ 16/16 测试通过
-- 依赖注入测试
-- CRUD 操作测试
-- 配置管理测试
-- Reranking 测试
-- 统计信息测试
-```
-
-### Needle In Haystack 测试
-
-**RAG 检索测试结果：**
-- 小规模文档（< 50）：✅ 成功率 > 90%
-- 中等规模（50-200）：⚠️ 成功率约 60%
-- 大规模文档（> 200）：❌ 需要优化
-
-**LLM 长上下文测试结果（Kimi K2）：**
-- 短上下文（< 2K）：✅ 100% 准确
-- 中等上下文（2K-8K）：✅ 95%+ 准确
-- 长上下文（8K-128K）：✅ 90%+ 准确
-- **无明显"中间盲点"问题**
-
-## 🎯 两种测试的区别
-
-| 测试类型 | RAG 检索测试 | LLM 长上下文测试 |
-|---------|-------------|----------------|
-| **测试对象** | 整个 RAG Pipeline | LLM 理解能力 |
-| **技术栈** | Embedding + VectorDB + LLM | 仅 LLM |
-| **测试流程** | 查询 → 向量检索 → 重排序 → LLM | 直接给 LLM 长文档 |
-| **评估指标** | Needle 是否排名第一 | LLM 是否正确回答 |
-| **参考项目** | 自研 | Arize Phoenix NIAH |
 
 ## 📚 文档
 
-- [架构重构说明](./ARCHITECTURE_REFACTOR.md) - 详细的架构设计
-- [迁移指南](./MIGRATION_GUIDE.md) - 从旧版本迁移
-- [项目结构](./PROJECT_STRUCTURE.md) - 完整的项目结构
+- [CLAUDE.md](./CLAUDE.md) - 项目开发指南和最佳实践
+- [MAIN_USAGE.md](./MAIN_USAGE.md) - 主程序使用说明
 
 ## 🔄 扩展性
 
@@ -266,29 +233,12 @@ client = RAGClient(vector_store=store)
 # 所有测试
 pytest tests/ -v
 
-# 重构后的测试
-pytest tests/test_refactored_client.py -v
+# LLM 模块测试
+pytest tests/test_llm_module.py -v
 
-# RAG 检索测试示例
-python rag_demo_full.py
-
-# 长上下文测试示例
-python long_context_demo.py
+# 飞书集成测试
+pytest tests/feishu/ -v
 ```
-
-### 示例脚本
-
-```bash
-# 查看所有演示示例
-python example_refactored.py
-```
-
-包含 5 个示例：
-1. 简单用法
-2. 配置驱动
-3. 依赖注入
-4. Mock 测试
-5. 配置序列化
 
 ### 完整系统启动
 
