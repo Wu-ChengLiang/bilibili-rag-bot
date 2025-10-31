@@ -8,7 +8,7 @@ from typing import Literal, Optional
 class EmbeddingConfig:
     """Configuration for embedding models"""
 
-    provider: Literal["text2vec", "openai", "custom"] = "text2vec"
+    provider: Literal["text2vec", "gte", "openai", "custom"] = "text2vec"
     model_name: str = "shibing624/text2vec-base-chinese"
     batch_size: int = 32
 
@@ -55,8 +55,8 @@ class RAGConfig:
         """
         return cls(
             embedding=EmbeddingConfig(
-                provider="text2vec",
-                model_name="shibing624/text2vec-base-chinese"
+                provider="gte",
+                model_name="thenlper/gte-base-zh"
             ),
             vector_store=VectorStoreConfig(
                 provider="chromadb",

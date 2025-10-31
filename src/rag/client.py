@@ -3,7 +3,7 @@
 from typing import List, Dict, Any, Optional, Union
 from .core.embedding import BaseEmbedding
 from .core.vector_store import BaseVectorStore
-from .embeddings.text2vec import Text2VecEmbedding
+from .embeddings.factory import create_embedding
 from .stores.factory import create_vector_store
 from .config import RAGConfig, EmbeddingConfig, VectorStoreConfig
 from .types import SearchResult
@@ -109,8 +109,8 @@ class RAGClient:
         Raises:
             ValueError: If provider is unsupported
         """
-        if config.provider == "text2vec":
-            return Text2VecEmbedding(model_name=config.model_name)
+        if config.provider in ("text2vec", "gte"):
+            return create_embedding(provider=config.provider, model_name=config.model_name)
         # Future: Add support for OpenAI, Cohere, etc.
         # elif config.provider == "openai":
         #     return OpenAIEmbedding(api_key=config.api_key, model=config.model_name)

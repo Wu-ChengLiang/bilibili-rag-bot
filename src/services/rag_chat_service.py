@@ -81,6 +81,46 @@ class RAGChatService:
         else:
             logger.warning("⚠️  未加载任何文档")
 
+    def debug_search(self, query: str, limit: int = 5) -> None:
+        """调试搜索过程 - 打印详细的搜索信息"""
+        print("\n" + "=" * 80)
+        print(f"🔍 DEBUG: 搜索过程分析")
+        print("=" * 80)
+        print(f"Query: {query}\n")
+
+        # 搜索
+        results = self.rag_client.search(query, limit=limit)
+
+        print(f"返回结果数: {len(results)}\n")
+
+        if results:
+            for i, result in enumerate(results, 1):
+                # 过滤掉 None 值
+                if result is None:
+                    continue
+
+                score = result.get("score", 0) if isinstance(result, dict) else 0
+                content = result.get("content", "") if isinstance(result, dict) else ""
+                metadata = result.get("metadata") if isinstance(result, dict) else None
+
+                # 确保 metadata 是字典
+                if metadata is None:
+                    metadata = {}
+                elif not isinstance(metadata, dict):
+                    metadata = {}
+
+                print(f"--- 结果 {i} ---")
+                print(f"相似度分数: {score:.4f}")
+                print(f"文档 ID: {metadata.get('doc_id', 'N/A')}")
+                print(f"标题: {metadata.get('title', 'N/A')}")
+                print(f"片段长度: {len(content)} 字符")
+                print(f"内容片段: {content[:100]}...")
+                print()
+        else:
+            print("❌ 未找到任何结果\n")
+
+        print("=" * 80 + "\n")
+
     def chat(
         self,
         platform: str,
@@ -89,6 +129,7 @@ class RAGChatService:
         message: str,
         use_history: bool = True,
         search_limit: int = 3,
+        debug: bool = False,
     ) -> str:
         """
         处理用户消息，返回回复
@@ -106,6 +147,10 @@ class RAGChatService:
         """
         logger.info(f"[{platform}/{user_id}] 收到消息: {message[:50]}...")
 
+        # 调试模式
+        if debug:
+            self.debug_search(message, limit=search_limit)
+
         # 1. RAG 搜索相关文档
         try:
             # 确保文本编码正确
@@ -113,6 +158,15 @@ class RAGChatService:
                 message = message.decode('utf-8')
             search_results = self.rag_client.search(message, limit=search_limit)
             context = [result["content"] for result in search_results]
+
+            # 输出调试信息
+            if debug:
+                print(f"📊 搜索统计:")
+                print(f"  - 返回片段数: {len(search_results)}")
+                if search_results:
+                    avg_score = sum(r.get("score", 0) for r in search_results) / len(search_results)
+                    print(f"  - 平均相似度: {avg_score:.4f}")
+                print()
         except Exception as e:
             logger.warning(f"搜索失败: {e}")
             context = []

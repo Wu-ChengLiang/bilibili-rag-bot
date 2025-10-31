@@ -59,6 +59,11 @@ def main():
         help="对话历史存储目录",
         default="./history",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="启用调试模式，显示搜索过程",
+    )
 
     args = parser.parse_args()
 
@@ -116,6 +121,7 @@ def main():
                 user_id=user_id,
                 user_name=user_name,
                 message=user_input,
+                debug=args.debug,
             )
 
             print(f"助手: {reply}\n")
