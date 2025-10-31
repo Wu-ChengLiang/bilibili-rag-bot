@@ -461,3 +461,146 @@ client = RAGClient(embedding=mock_embedding, vector_store=mock_store)
 5. **记录假设** - 尤其是关于数据格式和API合同的假设
 6. **保持依赖图干净** - 不要有循环依赖，避免不必要的导入
 7. **飞书集成是可选的** - 核心RAG即使没有飞书也能工作；保持关注点分离
+
+---
+
+## 🚀 API 服务启动
+
+### 快速启动
+
+```bash
+# 1. 安装依赖
+pip install -r requirements.txt
+
+# 2. 启动 FastAPI 服务
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+
+# 3. 访问 API
+# 浏览器打开: http://localhost:8000/docs
+# 或通过 curl 调用
+curl -X POST "http://127.0.0.1:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "test",
+    "user_id": "user_001",
+    "user_name": "用户",
+    "message": "你好"
+  }'
+```
+
+### 环境配置
+
+在 `.env` 文件中配置（项目已包含）：
+
+```env
+# 选择 LLM 提供者
+MOONSHOT_API_KEY=sk_xxxxx          # Kimi/Moonshot API
+ZHIPU_API_KEY=xxxxx                # Zhipu GLM API
+
+# 数据和历史
+DATA_DIRECTORY=./data              # 文档数据目录
+HISTORY_DIR=./history              # 对话历史目录
+
+# Feishu 集成（可选）
+FEISHU_APP_ID=xxxxx
+FEISHU_APP_SECRET=xxxxx
+FEISHU_WIKI_SPACE_ID=xxxxx
+```
+
+### API 端点
+
+| 端点 | 方法 | 功能 | 请求体 |
+|------|------|------|--------|
+| `/health` | GET | 健康检查 | - |
+| `/stats` | GET | 系统统计 | - |
+| `/chat` | POST | 多轮对话 | ChatRequest |
+| `/clear-history` | POST | 清空历史 | platform, user_id |
+
+### 示例：ChatRequest
+
+```json
+{
+  "platform": "bilibili",
+  "user_id": "123456",
+  "user_name": "用户名",
+  "message": "用户问题",
+  "history": [
+    {"role": "user", "content": "之前的问题"},
+    {"role": "assistant", "content": "之前的回答"}
+  ]
+}
+```
+
+### 示例：ChatResponse
+
+```json
+{
+  "success": true,
+  "reply": "回答内容"
+}
+```
+
+### LLM 提供者选择
+
+#### 使用 Kimi（默认）
+
+```bash
+# api/main.py 中配置
+llm_provider = "kimi"  # 或 "moonshot"
+llm_api_key = os.getenv("MOONSHOT_API_KEY")
+```
+
+#### 使用 Zhipu GLM
+
+```bash
+# api/main.py 中配置
+llm_provider = "zhipu"  # 或 "glm"
+llm_api_key = os.getenv("ZHIPU_API_KEY")
+```
+
+### 可用的 LLM 提供者
+
+```python
+from src.llm.factory import LLMFactory
+
+# 列出所有可用提供者
+providers = LLMFactory.list_providers()
+# ['kimi', 'moonshot', 'zhipu', 'glm']
+
+# 创建客户端
+client = LLMFactory.create(
+    provider="kimi",
+    api_key=os.getenv("MOONSHOT_API_KEY"),
+    model="moonshot-v1-8k"
+)
+```
+
+### Embedding 模型
+
+目前支持：
+
+- **Text2VecEmbedding** - 轻量级，速度快（text2vec-base-chinese）
+- **GTEEmbedding** - 平衡方案，精度好（gte-base-zh）
+
+### System Prompt 管理
+
+所有 LLM 的 system prompt 使用 **Jinja2 模板** 管理，存储在 `src/llm/prompts/` 目录：
+
+- `system_single.jinja2` - 单轮对话
+- `system_multi.jinja2` - 多轮对话
+
+**特性**：
+- 所有回答控制在 450 字以内
+- 模板与代码分离，易于维护
+- 所有 LLM 实现共享相同的 prompt
+
+### 常见问题
+
+**Q: 模型 loading 很慢？**
+A: 首次使用时会下载模型文件，建议在后台等待或使用 `-q` 参数减少日志输出
+
+**Q: 如何更换 LLM？**
+A: 修改 `api/main.py` 中的 `llm_provider` 和 `llm_api_key`，然后重启服务
+
+**Q: 如何自定义 prompt？**
+A: 编辑 `src/llm/prompts/*.jinja2` 文件，不需要改代码，重启服务即生效
