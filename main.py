@@ -235,6 +235,10 @@ class RAGChatbot:
 def main():
     """主函数 - 启动交互式对话"""
     import argparse
+    from dotenv import load_dotenv
+
+    # 加载 .env 文件
+    load_dotenv()
 
     parser = argparse.ArgumentParser(description="RAG 交互式对话系统")
     parser.add_argument(
@@ -247,7 +251,7 @@ def main():
         "--data-dir",
         type=str,
         help="数据目录（会扫描所有 .txt 和 .md 文件）",
-        default="./docs",
+        default=os.getenv("DATA_DIRECTORY", "./docs"),
     )
     parser.add_argument(
         "--feishu-doc-ids",
