@@ -31,7 +31,6 @@ from .client import RAGClient
 
 # Utilities
 from .reranker import Reranker
-from .needle_test import NeedleTest
 from .llm_client import LLMClient
 
 # Types
@@ -53,7 +52,6 @@ __all__ = [
     "ChromaDBStore",
     # Utilities
     "Reranker",
-    "NeedleTest",
     "LLMClient",
     # Types
     "SearchResult",
