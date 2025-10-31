@@ -3,11 +3,14 @@
 from typing import Dict, Type
 from .base import BaseLLMClient
 from .kimi import KimiClient
+from .zhipu import ZhipuClient
 
 # 提供者注册表
 _providers: Dict[str, Type[BaseLLMClient]] = {
     "kimi": KimiClient,
     "moonshot": KimiClient,  # moonshot 是 kimi 的别名
+    "zhipu": ZhipuClient,
+    "glm": ZhipuClient,  # glm 是 zhipu 的别名
 }
 
 
