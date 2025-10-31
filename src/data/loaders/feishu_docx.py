@@ -35,17 +35,17 @@ class FeishuDocxLoader(BaseDataLoader):
         """
         if config:
             self.config = config
+        elif app_id and app_secret:
+            self.config = FeishuConfig(app_id=app_id, app_secret=app_secret)
         else:
-            self.config = FeishuConfig(
-                app_id=app_id or "",
-                app_secret=app_secret or "",
-            )
-
-        if not self.config.app_id or not self.config.app_secret:
-            raise ValueError(
-                "app_id and app_secret are required. "
-                "Set them via config or environment variables."
-            )
+            # Try to load from environment variables
+            try:
+                self.config = FeishuConfig.from_env()
+            except ValueError as e:
+                raise ValueError(
+                    "app_id and app_secret are required. "
+                    "Set them via config, parameters, or environment variables."
+                ) from e
 
         self.document_ids = document_ids or []
         self.access_token = None
