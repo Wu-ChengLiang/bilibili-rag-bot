@@ -1,0 +1,3 @@
+[submodule "BiliGo"]
+	path = BiliGo
+	url = https://github.com/Wu-ChengLiang/BiliGo.git
