@@ -15,7 +15,7 @@ class ZhipuClient(BaseLLMClient):
     def __init__(
         self,
         api_key: str,
-        model: str = "glm-4.5-flash",
+        model: str = "glm-4-flash",
         base_url: str = "https://open.bigmodel.cn/api/paas/v4",
         temperature: float = 0.6,
     ):
@@ -24,7 +24,7 @@ class ZhipuClient(BaseLLMClient):
 
         Args:
             api_key: Zhipu API 密钥
-            model: 模型名称（默认 glm-4.5-flash）
+            model: 模型名称（默认 glm-4-flash）
             base_url: API 基础 URL
             temperature: 采样温度
         """
