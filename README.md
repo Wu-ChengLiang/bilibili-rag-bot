@@ -9,14 +9,42 @@
 - 🇨🇳 **中文优化** - 智能文本分块、中文 embedding、重排序
 - 🔌 **可扩展** - 支持多种 embedding 和向量数据库
 - ✅ **完整测试** - 16 个单元测试全部通过
+- 🤖 **BiliGo 集成** - B站私信 AI 自动回复系统（基于 RAG）
 
 ## 🚀 快速开始
 
 ### 安装
 
 ```bash
-pip install chromadb text2vec openai
+pip install -r requirements.txt
 ```
+
+### 启动 RAG API 服务
+
+```bash
+# 启动 FastAPI 服务（端口 8000）
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+
+# 验证服务
+curl http://localhost:8000/health
+```
+
+### 启动 BiliGo B站私信自动回复
+
+```bash
+# 进入 BiliGo 子模块目录
+cd BiliGo
+
+# 启动 Flask Web 应用（端口 4999）
+python3 app.py
+
+# 访问 Web 界面
+# 浏览器打开: http://localhost:4999
+```
+
+**系统架构：**
+- FastAPI RAG 服务 (8000) - 提供 RAG 检索和 AI 回复
+- Flask BiliGo (4999) - 私信监控和配置管理
 
 ### 基础使用
 
@@ -261,6 +289,22 @@ python example_refactored.py
 3. 依赖注入
 4. Mock 测试
 5. 配置序列化
+
+### 完整系统启动
+
+```bash
+# 1. 启动 RAG 服务（必需）
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 &
+
+# 2. 启动 BiliGo B站私信系统（可选）
+cd BiliGo && python3 app.py &
+
+# 3. 查看 RAG 文档统计
+curl http://localhost:8000/stats | python3 -m json.tool
+
+# 4. 查看 BiliGo 监控状态
+curl http://localhost:4999/api/status | python3 -m json.tool
+```
 
 ## 📊 性能指标
 
