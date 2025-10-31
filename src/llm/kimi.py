@@ -4,6 +4,7 @@ import logging
 from typing import List, Dict
 from openai import OpenAI
 from .base import BaseLLMClient
+from .prompt_loader import PromptLoader
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class KimiClient(BaseLLMClient):
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model = model
         self.temperature = temperature
+        self.prompt_loader = PromptLoader()
 
     def generate(
         self,
@@ -40,9 +42,8 @@ class KimiClient(BaseLLMClient):
         # 构建上下文
         context_str = "\n\n".join([f"文档片段 {i+1}:\n{doc}" for i, doc in enumerate(context)])
 
-        system_prompt = """你是一个智能问答助手。你会基于提供的文档片段来回答用户的问题。
-
-请仔细阅读文档片段，从中找到最相关的信息来回答问题。如果文档中没有相关信息，请说明这一点。"""
+        # 从模板加载 system prompt
+        system_prompt = self.prompt_loader.render("system_single.jinja2")
 
         user_message = f"""参考文档：
 {context_str}
@@ -75,10 +76,8 @@ class KimiClient(BaseLLMClient):
         # 构建上下文
         context_str = "\n\n".join([f"文档片段 {i+1}:\n{doc}" for i, doc in enumerate(context)])
 
-        system_prompt = """你是一个智能问答助手。你会基于提供的文档片段和之前的对话历史来回答用户的问题。
-
-请仔细阅读文档片段和对话历史，理解用户的意思和上下文，然后给出准确的回答。
-如果文档中没有相关信息，请说明这一点。"""
+        # 从模板加载 system prompt
+        system_prompt = self.prompt_loader.render("system_multi.jinja2")
 
         # 构建消息列表
         messages = [
