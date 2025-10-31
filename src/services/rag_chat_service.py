@@ -107,8 +107,15 @@ class RAGChatService:
         logger.info(f"[{platform}/{user_id}] 收到消息: {message[:50]}...")
 
         # 1. RAG 搜索相关文档
-        search_results = self.rag_client.search(message, limit=search_limit)
-        context = [result["content"] for result in search_results]
+        try:
+            # 确保文本编码正确
+            if isinstance(message, bytes):
+                message = message.decode('utf-8')
+            search_results = self.rag_client.search(message, limit=search_limit)
+            context = [result["content"] for result in search_results]
+        except Exception as e:
+            logger.warning(f"搜索失败: {e}")
+            context = []
 
         if not context:
             logger.warning(f"未找到相关文档")
