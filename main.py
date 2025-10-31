@@ -57,14 +57,22 @@ class RAGChatbot:
         # 本地目录
         if data_directory:
             logger.info(f"从目录加载文件: {data_directory}")
-            loader = LocalFileLoader(directory=data_directory, file_pattern="*.{txt,md}")
-            documents.extend(loader.load())
+            # 加载 .txt 文件
+            loader_txt = LocalFileLoader(directory=data_directory, file_pattern="*.txt")
+            documents.extend(loader_txt.load())
+            # 加载 .md 文件
+            loader_md = LocalFileLoader(directory=data_directory, file_pattern="*.md")
+            documents.extend(loader_md.load())
 
         # 特定文件目录
         if local_directory:
             logger.info(f"从目录加载文件: {local_directory}")
-            loader = LocalFileLoader(directory=local_directory, file_pattern="*.{txt,md}")
-            documents.extend(loader.load())
+            # 加载 .txt 文件
+            loader_txt = LocalFileLoader(directory=local_directory, file_pattern="*.txt")
+            documents.extend(loader_txt.load())
+            # 加载 .md 文件
+            loader_md = LocalFileLoader(directory=local_directory, file_pattern="*.md")
+            documents.extend(loader_md.load())
 
         # 飞书文档
         if feishu_doc_ids:
